@@ -4,12 +4,14 @@ import {
   HttpHandler,
   HttpEvent,
   HttpInterceptor,
-  HttpResponse
+  HttpResponse,
+  HttpErrorResponse
 } from '@angular/common/http';
-import { Observable, of, throwError, tap } from 'rxjs';
-import { concatMap, map, catchError } from 'rxjs/operators';
+import { Observable, throwError, tap } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { DataService } from '../../services/data.service';
+import StorageHerlper from '../helpers/storage.helper';
+import { catchError, switchMap } from 'rxjs/operators';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
@@ -17,67 +19,44 @@ export class AuthInterceptor implements HttpInterceptor {
   constructor(private api: ApiService, private data: DataService) { }
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    console.log('<<', request);
+    //console.log('<<', request);
     if (request.url.includes('/mirror/')) {
-      return next.handle(request).pipe(
-        concatMap(
-          (respOriginal) => {
-            //console.log('concat ',respOriginal)
-            if (respOriginal instanceof HttpResponse) {
-              return this.api.check().pipe(
-                catchError(err => {
-                  //console.log(err);
-                  if (err.status === 403) {
-                    return throwError(() => err)
-                  }
-                  return of(err)
-                }),
-                map(
-                  () => respOriginal
-                )
-              )
-            }
-            return of(respOriginal)
+      let originalRequest = request
+      request = request.clone(
+        {
+          setHeaders: {
+            Authorization: 'Beader ' + StorageHerlper.getItem('session').token
           }
-        ),
-        catchError(err => {
-          if (err.status === 403) {
-            return this.api.refreshToken()
-            // .pipe(
-            //   concatMap((resp: any) => {
-            //     this.data.session$.next(
-            //       {
-            //         username: this.api.getSession('user'),
-            //         token: resp.token
-            //       }
-            //     )
-            //     return this.api.searchPokemon('ditto').pipe(
-            //       concatMap( res => {
-            //         return throwError(() => res)
-            //       })
-            //     )
-            //   })
-            // )
-          }
-          return of(err)
-        }),
+        }
       )
-      if (request.url.includes('/refresh')) {
-        return next.handle(request).pipe(
-          tap((resp:any) => {
-            this.data.session$.next(
-              {
-                username: this.api.getSession('user'),
-                token: resp.token
-              }
-            )
-          }),
-          concatMap((res: any) => {
-            return this.api.searchPokemon('ditto')
-          })
-        )
-      }
+      return next.handle(request).pipe(
+        catchError( (err:any) => {
+          console.log('>>',err);
+          if (err instanceof HttpErrorResponse && err.status === 401) {
+            console.log('inError');
+            return this.expiredHandler(originalRequest, next)
+          }
+          return throwError(() => err)
+        })
+      )
     }
     return next.handle(request)
   }
+
+  private expiredHandler(originalRequest: HttpRequest<unknown>, next: HttpHandler ){
+    return this.api.refreshToken().pipe(
+      switchMap( (resp) => {
+        StorageHerlper.setItem('session', resp)
+        originalRequest = originalRequest.clone(
+          {
+            setHeaders: {
+              Authorization: 'Beader ' + StorageHerlper.getItem('session').token
+            }
+          }
+        )
+        return next.handle(originalRequest)
+      })
+    )
+  }
+
 }

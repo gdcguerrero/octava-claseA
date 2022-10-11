@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { DataService } from 'src/app/services/data.service';
 import { ApiService } from '../../services/api.service';
 import { Router } from '@angular/router';
+import StorageHerlper from '../../libs/helpers/storage.helper';
 
 @Component({
   selector: 'app-uno',
@@ -21,12 +22,7 @@ export class UnoComponent implements OnInit {
   onClick() {
     this.api.login(this.username, this.password).subscribe(
       {next: resp => {
-        this.data.session$.next(
-          {
-            username: this.username,
-            token: resp.token
-          }
-        )
+        StorageHerlper.setItem('session',resp)
         this.router.navigate(['search'])
       }}
     )

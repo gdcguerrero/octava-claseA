@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import StorageHerlper from '../libs/helpers/storage.helper';
 
 @Injectable({
   providedIn: 'root'
@@ -26,25 +27,25 @@ export class ApiService {
       })
   }
 
-  getSession(option: string) : string{
-    let session = JSON.parse(localStorage.getItem('session')!)
-    if (option === 'user') {
-      return session.username
-    }
-    return session.token
-  }
+  // getSession(option: string) : string{
+  //   let session = JSON.parse(localStorage.getItem('session')!)
+  //   if (option === 'user') {
+  //     return session.username
+  //   }
+  //   return session.token
+  // }
 
-  check(): Observable<any>{
-    return this.http.get('http://ec2-18-116-97-69.us-east-2.compute.amazonaws.com:4001/api/check',{
-      headers: {
-        Authorization: "Bearer "+ this.getSession('token')
-      }
-    })
-  }
+  // check(): Observable<any>{
+  //   return this.http.get('http://ec2-18-116-97-69.us-east-2.compute.amazonaws.com:4001/api/check',{
+  //     headers: {
+  //       Authorization: "Bearer "+ this.getSession('token')
+  //     }
+  //   })
+  // }
 
   refreshToken(): Observable<any>{
     return this.http.post('http://ec2-18-116-97-69.us-east-2.compute.amazonaws.com:4001/api/refresh',{
-      user: this.getSession('user')
+      session: StorageHerlper.getItem('session')
     })
   }
 

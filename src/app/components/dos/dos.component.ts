@@ -10,7 +10,7 @@ import { Observable, tap } from 'rxjs';
 export class DosComponent implements OnInit {
 
   public pokemon$!: Observable<any>
-  public pokename : string = ''
+  public pokename : string = 'giratina-altered'
 
   constructor(private api: ApiService) {
     this.pokemon$ = api.searchPokemon(this.pokename).pipe(
